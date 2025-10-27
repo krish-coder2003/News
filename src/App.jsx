@@ -5,12 +5,9 @@ import Header from './components/Header';
 import CategoryFilter from './components/CategoryFilter';
 import './App.css'; 
 
-// 🚨 WARNING: This version uses direct API access and will ONLY work on localhost 
-// due to NewsAPI Developer Plan restrictions.
-const API_KEY = '047b6fad3ed94b7098a1e0639f8253ee'; // Your actual API Key
-const BASE_URL = 'https://newsapi.org/v2/';
+// 🚨 PROXY PATH: Calls the Vercel API Route: /api/news-proxy
+const PROXY_URL = '/api/news-proxy'; 
 const DEFAULT_CATEGORY = 'general';
-const DEFAULT_COUNTRY = 'us';
 
 function App() {
   const [articles, setArticles] = useState([]);
@@ -23,24 +20,29 @@ function App() {
     setLoading(true);
     setError(null);
     
-    let endpoint = 'top-headlines';
-    // Reverting to direct URL construction with hardcoded API key
-    let params = `country=${DEFAULT_COUNTRY}&category=${cat}&apiKey=${API_KEY}`;
+    // Parameters prepared for the Vercel API Route (endpoint, q, category)
+    let params = new URLSearchParams();
     
     if (query) {
-      endpoint = 'everything';
-      params = `q=${query}&sortBy=relevancy&apiKey=${API_KEY}`;
+      params.append('endpoint', 'everything');
+      params.append('q', query);
+    } else {
+      params.append('endpoint', 'top-headlines');
+      params.append('category', cat);
     }
 
-    const url = `${BASE_URL}${endpoint}?${params}`;
+    const url = `${PROXY_URL}?${params.toString()}`;
 
     try {
+      // Fetch from the local proxy endpoint
       const response = await fetch(url);
+      
       if (!response.ok) {
-        // Attempt to parse API-specific error message
+        // Handle error response from the Vercel function
         const errorData = await response.json();
-        throw new Error(`API Error: ${errorData.message || response.statusText}`);
+        throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
       }
+      
       const data = await response.json();
       
       const filteredArticles = data.articles.filter(article => article.title !== "[Removed]");
@@ -48,9 +50,7 @@ function App() {
       
     } catch (err) {
       console.error("Fetch error:", err.message);
-      // This will now show the "Requests from the browser are not allowed..." error 
-      // if deployed, but will work on localhost.
-      setError(`Failed to fetch news: ${err.message}. Check API key and network.`);
+      setError(`Failed to fetch news: ${err.message}.`);
     } finally {
       setLoading(false);
     }
