@@ -5,11 +5,12 @@ import Header from './components/Header';
 import CategoryFilter from './components/CategoryFilter';
 import './App.css'; 
 
-// 🚨 REMOVED: API_KEY and BASE_URL are no longer needed here. 
-// They are now handled securely by the Netlify serverless function.
-const PROXY_URL = '/.netlify/functions/fetch-news'; // The new serverless function endpoint
+// 🚨 WARNING: This version uses direct API access and will ONLY work on localhost 
+// due to NewsAPI Developer Plan restrictions.
+const API_KEY = '047b6fad3ed94b7098a1e0639f8253ee'; // Your actual API Key
+const BASE_URL = 'https://newsapi.org/v2/';
 const DEFAULT_CATEGORY = 'general';
-// DEFAULT_COUNTRY is now handled on the server side in fetch-news.js
+const DEFAULT_COUNTRY = 'us';
 
 function App() {
   const [articles, setArticles] = useState([]);
@@ -22,30 +23,24 @@ function App() {
     setLoading(true);
     setError(null);
     
-    // Use URLSearchParams to easily build the query string for the proxy function
-    let params = new URLSearchParams();
+    let endpoint = 'top-headlines';
+    // Reverting to direct URL construction with hardcoded API key
+    let params = `country=${DEFAULT_COUNTRY}&category=${cat}&apiKey=${API_KEY}`;
     
     if (query) {
-      params.append('endpoint', 'everything');
-      params.append('q', query);
-    } else {
-      params.append('endpoint', 'top-headlines');
-      params.append('category', cat);
+      endpoint = 'everything';
+      params = `q=${query}&sortBy=relevancy&apiKey=${API_KEY}`;
     }
 
-    // Construct the new URL pointing to your Netlify function
-    const url = `${PROXY_URL}?${params.toString()}`;
+    const url = `${BASE_URL}${endpoint}?${params}`;
 
     try {
-      // 1. Request the data from the secure serverless proxy
       const response = await fetch(url);
-      
       if (!response.ok) {
-        // 2. The error message now comes from the Netlify function
+        // Attempt to parse API-specific error message
         const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! Status: ${response.status}`);
+        throw new Error(`API Error: ${errorData.message || response.statusText}`);
       }
-      
       const data = await response.json();
       
       const filteredArticles = data.articles.filter(article => article.title !== "[Removed]");
@@ -53,8 +48,9 @@ function App() {
       
     } catch (err) {
       console.error("Fetch error:", err.message);
-      // Display the friendly message if it's a known error
-      setError(`Failed to fetch news: ${err.message}.`);
+      // This will now show the "Requests from the browser are not allowed..." error 
+      // if deployed, but will work on localhost.
+      setError(`Failed to fetch news: ${err.message}. Check API key and network.`);
     } finally {
       setLoading(false);
     }
