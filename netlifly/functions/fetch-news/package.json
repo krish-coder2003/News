@@ -1,8 +1,0 @@
-{
-  "name": "news-api-fetcher",
-  "version": "1.0.0",
-  "description": "Dependencies for Netlify Serverless Function to proxy NewsAPI requests.",
-  "dependencies": {
-    "node-fetch": "^2.6.7"
-  }
-}
